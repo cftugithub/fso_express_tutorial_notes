@@ -6,6 +6,9 @@ const cors = require("cors");
 
 app.use(cors());
 
+// display front end from static files
+app.use(express.static("dist"));
+
 // use json parser
 app.use(express.json());
 

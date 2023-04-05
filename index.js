@@ -1,5 +1,12 @@
+if (process.env.NODE_ENV !== "production") {
+  require("dotenv").config();
+}
+
 const express = require("express");
 const app = express();
+
+// import the model
+const Note = require("./models/note");
 
 // use cors (cross origin resource sharing)
 const cors = require("cors");
@@ -51,7 +58,12 @@ app.get("/", (request, response) => {
 
 // get all notes
 app.get("/api/notes", (request, response) => {
-  response.json(notes);
+  //response.json(notes);
+
+  // use mongoose
+  Note.find({}).then((notes) => {
+    response.json(notes);
+  });
 });
 
 // get one note
@@ -107,6 +119,6 @@ const unknownEndpoint = (request, response) => {
 
 app.use(unknownEndpoint);
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT;
 app.listen(PORT);
 console.log(`running on port ${PORT}`);

@@ -1,0 +1,22 @@
+POST http://localhost:3001/api/notes
+Content-Type: application/json
+
+{
+    "content": "note from VS code rest extension",
+    "important": true
+}
+
+###
+POST http://localhost:3001/api/notes
+Content-Type: application/json
+
+{
+    "content": "testing note with no importance"
+}
+
+###
+POST http://localhost:3001/api/notes
+Content-Type: application/json
+
+{
+}

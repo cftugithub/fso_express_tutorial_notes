@@ -66,58 +66,126 @@ app.get("/api/notes", (request, response) => {
   });
 });
 
-// get one note
-app.get("/api/notes/:id", (request, response) => {
-  const id = Number(request.params.id);
-  const note = notes.find((note) => note.id === id);
-
-  if (note) {
-    response.json(note);
-  } else {
-    response.status(404).end();
-  }
-});
-
-const generateId = () => {
-  const maxId = notes.length > 0 ? Math.max(...notes.map((n) => n.id)) : 0;
-  return maxId + 1;
-};
-
 // create a note
-app.post("/api/notes", (request, response) => {
+// save the data to the db
+// pass errors to error handler
+app.post("/api/notes", (request, response, next) => {
   const body = request.body;
 
-  if (!body.content) {
+  if (body.content === undefined) {
     return response.status(400).json({
       error: "content missing",
     });
   }
 
-  const note = {
+  // create a new note object
+  const note = new Note({
     content: body.content,
     important: body.important || false,
-    id: generateId(),
-  };
+  });
 
-  notes = notes.concat(note);
+  // save the note
+  //notes = notes.concat(note);
+  note
+    .save()
+    .then((savedNote) => {
+      response.json(savedNote);
+    })
+    .catch((error) => next(error));
 
-  console.log(note);
-  response.json(note);
+  //console.log(note);
+  //response.json(note);
 });
+
+// get one note
+// get from mongoose
+app.get("/api/notes/:id", (request, response, next) => {
+  //   const id = Number(request.params.id);
+  //   const note = notes.find((note) => note.id === id);
+
+  //   if (note) {
+  //     response.json(note
+  //   } else {
+  //     response.status(404).end();
+  //   }
+
+  // send 404 error back if the note id doesn't exist
+  // pass any errors to error handling middleware
+  Note.findById(request.params.id)
+    .then((note) => {
+      if (note) {
+        response.json(note);
+      } else {
+        response.status(404).end();
+      }
+    })
+    .catch((error) => next(error));
+});
+
+// function to generate id for notes - no longer used
+const generateId = () => {
+  const maxId = notes.length > 0 ? Math.max(...notes.map((n) => n.id)) : 0;
+  return maxId + 1;
+};
 
 // delete a note
-app.delete("/api/notes/:id", (request, response) => {
-  const id = Number(request.params.id);
-  notes = notes.filter((note) => note.id !== id);
+// use findByIdAndRemove
+app.delete("/api/notes/:id", (request, response, next) => {
+  //   const id = Number(request.params.id);
+  //   notes = notes.filter((note) => note.id !== id);
 
-  response.status(204).end();
+  //   response.status(204).end();
+
+  Note.findByIdAndRemove(request.params.id)
+    .then((result) => {
+      response.status(204).end();
+    })
+    .catch((error) => next(error));
 });
 
+// update a note
+app.put("/api/notes/:id", (request, response, next) => {
+  //const body = request.body;
+  const { content, important } = request.body;
+  // const note = {
+  //   content: body.content,
+  //   important: body.important,
+  // };
+
+  // add validation when updating since it is not run by default
+  Note.findByIdAndUpdate(
+    request.params.id,
+    { content, important },
+    { new: true, runValidators: true, context: "query" }
+  )
+    .then((updatedNote) => {
+      response.json(updatedNote);
+    })
+    .catch((error) => next(error));
+});
+
+// unknown endpoint middleware
+// this should come after the routes
 const unknownEndpoint = (request, response) => {
   response.status(404).send({ error: "unknown endpoint" });
 };
 
 app.use(unknownEndpoint);
+
+// make an error handling middleware
+// this should be the last middleware loaded
+// handle validation errors
+const errorHandler = (error, request, response, next) => {
+  console.error(error.message);
+  if (error.name === "CastError") {
+    return response.status(400).send({ error: "malformed id" });
+  } else if (error.name === "ValidationError") {
+    return response.status(400).json({ error: error.message });
+  }
+  next(error);
+};
+
+app.use(errorHandler);
 
 const PORT = process.env.PORT;
 app.listen(PORT);
